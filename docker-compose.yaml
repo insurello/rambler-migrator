@@ -1,0 +1,24 @@
+# https://developers.eventstore.com/server/v20.10/docs/installation/docker.html#use-docker-compose
+version: "3.5"
+
+services:
+  postgres:
+    image: postgres:14.0
+    hostname: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_rambler_migrator:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: example
+      POSTGRES_USER: rambler
+      POSTGRES_PASSWORD: verysecret
+
+  rambler:
+    build: ./
+    hostname: rambler
+    environment:
+      RAMBLER_HOST: postgres
+
+volumes:
+  postgres_data_rambler_migrator:
