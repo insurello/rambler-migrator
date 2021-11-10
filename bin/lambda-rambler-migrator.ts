@@ -3,15 +3,19 @@ import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
 import { LambdaRamblerMigratorStack } from "../lib/lambda-rambler-migrator-stack";
 import { VpcStack } from "../lib/vpc";
+import { RdsStack } from "../lib/rds";
 
 const app = new cdk.App();
 
 const vpcStack = new VpcStack(app, "VpcStack", {});
 
+const rds = new RdsStack(app, "RDS", vpcStack.vpc, {});
+
 new LambdaRamblerMigratorStack(
   app,
   "LambdaRamblerMigratorStack",
   vpcStack.vpc,
+  rds.cluster,
   {
     /* If you don't specify 'env', this stack will be environment-agnostic.
      * Account/Region-dependent features and context lookups will not work,
