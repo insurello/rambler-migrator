@@ -22,6 +22,8 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../")),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_NAT },
+      memorySize: 256,
+      timeout: cdk.Duration.minutes(1),
       environment: {
         RAMBLER_HOST: rdsCluster.clusterEndpoint.hostname,
         RAMBLER_USER: "admin",
@@ -38,7 +40,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
           resources: [fn.functionArn],
         }),
       ]),
-      // timeout: cdk.Duration.minutes(15),
+      timeout: cdk.Duration.minutes(15),
       onCreate: {
         service: "Lambda",
         action: "invoke",
