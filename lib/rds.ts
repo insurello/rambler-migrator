@@ -17,6 +17,7 @@ export class RdsStack extends cdk.Stack {
         "default.aurora-postgresql10"
       ),
       vpc,
+      enableDataApi: true,
     });
   }
 }
