@@ -26,7 +26,7 @@
     "@aws-cdk/aws-lambda": "^1.132.0",
     "@aws-cdk/aws-rds": "^1.132.0",
     "@aws-cdk/aws-secretsmanager": "^1.132.0",
-    "@aws-cdk/core": "1.130.0",
+    "@aws-cdk/core": "1.132.0",
     "@aws-cdk/custom-resources": "^1.132.0",
     "module": "^1.2.5",
     "source-map-support": "^0.5.16"
