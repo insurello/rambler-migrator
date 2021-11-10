@@ -21,7 +21,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
     const fn = new lambda.DockerImageFunction(this, "func", {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../")),
       vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_NAT },
       environment: {
         RAMBLER_HOST: rdsCluster.clusterEndpoint.hostname,
         RAMBLER_USER: "admin",
