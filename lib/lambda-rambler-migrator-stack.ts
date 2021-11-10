@@ -1,3 +1,4 @@
+import * as ec2 from "@aws-cdk/aws-ec2";
 import * as iam from "@aws-cdk/aws-iam";
 import * as lambda from "@aws-cdk/aws-lambda";
 import * as cdk from "@aws-cdk/core";
@@ -5,11 +6,18 @@ import * as cr from "@aws-cdk/custom-resources";
 import * as path from "path";
 
 export class LambdaRamblerMigratorStack extends cdk.Stack {
-  constructor(scope: cdk.Construct, id: string, props?: cdk.StackProps) {
+  constructor(
+    scope: cdk.Construct,
+    id: string,
+    vpc: ec2.Vpc,
+    props?: cdk.StackProps
+  ) {
     super(scope, id, props);
 
     const fn = new lambda.DockerImageFunction(this, "func", {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../")),
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
     });
 
     // ref: https://github.com/aws/aws-cdk/issues/10820
@@ -42,6 +50,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
         },
         physicalResourceId: cr.PhysicalResourceId.of(
           "JobSenderTriggerPhysicalId"
+          // Date.now().toString()
         ),
       },
     });

@@ -21,8 +21,10 @@
     "typescript": "~3.9.7"
   },
   "dependencies": {
+    "@aws-cdk/aws-ec2": "^1.132.0",
     "@aws-cdk/aws-iam": "^1.132.0",
     "@aws-cdk/aws-lambda": "^1.132.0",
+    "@aws-cdk/aws-rds": "^1.132.0",
     "@aws-cdk/core": "1.130.0",
     "@aws-cdk/custom-resources": "^1.132.0",
     "module": "^1.2.5",
