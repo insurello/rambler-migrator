@@ -23,7 +23,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_NAT },
       memorySize: 256,
-      timeout: cdk.Duration.minutes(1),
+      timeout: cdk.Duration.minutes(5),
       environment: {
         RAMBLER_HOST: rdsCluster.clusterEndpoint.hostname,
         RAMBLER_USER: "admin",
