@@ -18,6 +18,7 @@ export class RdsStack extends cdk.Stack {
       ),
       vpc,
       enableDataApi: true,
+      defaultDatabaseName: "example",
     });
   }
 }
