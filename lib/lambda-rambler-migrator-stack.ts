@@ -31,6 +31,11 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
       },
     });
 
+    fn.connections.allowTo(
+      rdsCluster,
+      ec2.Port.tcp(rdsCluster.clusterEndpoint.port)
+    );
+
     // ref: https://github.com/aws/aws-cdk/issues/10820
     const lambdaTrigger = new cr.AwsCustomResource(this, "FunctionTrigger", {
       policy: cr.AwsCustomResourcePolicy.fromStatements([
