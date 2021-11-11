@@ -54,9 +54,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
           FunctionName: fn.functionName,
           InvocationType: "Event",
         },
-        physicalResourceId: cr.PhysicalResourceId.of(
-          "JobSenderTriggerPhysicalId"
-        ),
+        physicalResourceId: cr.PhysicalResourceId.of(Date.now().toString()),
       },
       onUpdate: {
         service: "Lambda",
@@ -65,10 +63,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
           FunctionName: fn.functionName,
           InvocationType: "Event",
         },
-        physicalResourceId: cr.PhysicalResourceId.of(
-          "JobSenderTriggerPhysicalId"
-          // Date.now().toString()
-        ),
+        physicalResourceId: cr.PhysicalResourceId.of(Date.now().toString()),
       },
     });
   }
