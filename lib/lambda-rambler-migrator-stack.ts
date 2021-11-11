@@ -17,6 +17,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
     super(scope, id, props);
 
     const dbPassword = rdsCluster.secret!.secretValueFromJson("password");
+    const dbUser = rdsCluster.secret!.secretValueFromJson("username");
 
     const fn = new lambda.DockerImageFunction(this, "func", {
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../")),
@@ -26,7 +27,7 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
       timeout: cdk.Duration.minutes(5),
       environment: {
         RAMBLER_HOST: rdsCluster.clusterEndpoint.hostname,
-        RAMBLER_USER: "admin",
+        RAMBLER_USER: dbUser.toString(),
         RAMBLER_PASSWORD: dbPassword.toString(),
       },
     });
