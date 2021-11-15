@@ -7,7 +7,7 @@ export class RdsStack extends cdk.Stack {
   cluster: rds.ServerlessCluster;
 
   constructor(scope: cdk.Construct, id: string, vpc: ec2.IVpc, props: any) {
-    super(scope, id, { ...props, stackName: `${props.environmentName}-${id}` });
+    super(scope, id, props);
 
     this.cluster = new rds.ServerlessCluster(this, "ExampleCluster", {
       engine: rds.DatabaseClusterEngine.AURORA_POSTGRESQL,
