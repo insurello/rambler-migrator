@@ -6,7 +6,7 @@ import * as cdk from "@aws-cdk/core";
 import * as cr from "@aws-cdk/custom-resources";
 import * as path from "path";
 
-export class LambdaRamblerMigratorStack extends cdk.Stack {
+export class LambdaRamblerMigrator extends cdk.Stack {
   constructor(
     scope: cdk.Construct,
     id: string,

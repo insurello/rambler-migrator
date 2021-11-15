@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import "source-map-support/register";
 import * as cdk from "@aws-cdk/core";
-import { LambdaRamblerMigratorStack } from "../lib/lambda-rambler-migrator-stack";
+import { LambdaRamblerMigrator } from "../lib/lambda-rambler-migrator";
 import { VpcStack } from "../lib/vpc";
 import { RdsStack } from "../lib/rds";
 
@@ -11,7 +11,7 @@ const vpcStack = new VpcStack(app, "VpcStack", {});
 
 const rds = new RdsStack(app, "RDS", vpcStack.vpc, {});
 
-new LambdaRamblerMigratorStack(
+new LambdaRamblerMigrator(
   app,
   "LambdaRamblerMigrator",
   vpcStack.vpc,
