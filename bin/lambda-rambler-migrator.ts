@@ -13,7 +13,7 @@ const rds = new RdsStack(app, "RDS", vpcStack.vpc, {});
 
 new LambdaRamblerMigratorStack(
   app,
-  "LambdaRamblerMigratorStack",
+  "LambdaRamblerMigrator",
   vpcStack.vpc,
   rds.cluster,
   {

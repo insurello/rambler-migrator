@@ -20,7 +20,10 @@ export class LambdaRamblerMigratorStack extends cdk.Stack {
     const dbUser = rdsCluster.secret!.secretValueFromJson("username");
 
     const fn = new lambda.DockerImageFunction(this, "func", {
-      code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../")),
+      functionName: "rambler-migrator",
+      code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../"), {
+        file: "Dockerfile.lambda",
+      }),
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_NAT },
       memorySize: 256,

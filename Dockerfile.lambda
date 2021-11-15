@@ -1,0 +1,15 @@
+FROM alpine:3.14
+
+RUN apk --no-cache add curl
+
+RUN wget -O rambler https://github.com/elwinar/rambler/releases/download/v5.4.0/rambler-alpine-amd64
+RUN chmod +x rambler
+RUN ls
+
+COPY migrations migrations
+COPY rambler.json ./
+COPY lambda-docker/docker-entrypoint.sh .
+# ENTRYPOINT [ "./rambler" ]
+# CMD [ "apply", "--all" ]
+RUN ["chmod", "+x", "./docker-entrypoint.sh"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
