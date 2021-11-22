@@ -16,9 +16,6 @@ export class LambdaRamblerMigrator extends cdk.Stack {
   ) {
     super(scope, id, props);
 
-    const dbPassword = rdsCluster.secret!.secretValueFromJson("password");
-    const dbUser = rdsCluster.secret!.secretValueFromJson("username");
-
     const fn = new lambda.DockerImageFunction(this, "func", {
       functionName: "rambler-migrator",
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../"), {
@@ -30,8 +27,10 @@ export class LambdaRamblerMigrator extends cdk.Stack {
       timeout: cdk.Duration.minutes(5),
       environment: {
         RAMBLER_HOST: rdsCluster.clusterEndpoint.hostname,
-        RAMBLER_USER: dbUser.toString(),
-        RAMBLER_PASSWORD: dbPassword.toString(),
+        RAMBLER_USER: rdsCluster
+          .secret!.secretValueFromJson("username")
+          .toString(),
+        SECRET_ARN: rdsCluster.secret!.secretArn,
       },
     });
 
@@ -39,6 +38,8 @@ export class LambdaRamblerMigrator extends cdk.Stack {
       rdsCluster,
       ec2.Port.tcp(rdsCluster.clusterEndpoint.port)
     );
+
+    rdsCluster.secret!.grantRead(fn.role!);
 
     // ref: https://github.com/aws/aws-cdk/issues/10820
     const lambdaTrigger = new cr.AwsCustomResource(this, "FunctionTrigger", {
