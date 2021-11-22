@@ -1,6 +1,6 @@
 # AWS Rambler Migrator
 
-An example of running rambler migrations on deploy with the CDK.
+An example of running [rambler](https://github.com/elwinar/rambler) migrations on deploy with the CDK.
 
 This project sets up:
 
@@ -10,13 +10,9 @@ This project sets up:
 
 ## Lambda Migrator
 
-The lambda migrator is a vanilla Alpine docker with curl (for Lambda interaction) and rambler added. The lambda is triggered using a "Custom Resource" on deploy.
+The lambda migrator is an AWS NodeJS docker with rambler added. The lambda is triggered using a "Custom Resource" on deploy.
 
-N.B.! The RDS secrets are exposed via environment variables to the Lambda, this means anyone who is allowed to look at the lambda will also gain access to those secrets.
-
-Possible improvements:
-
-- use a programming language stack to access the secrets and call rambler (e.g. NodeJS or similar)
+To avoid exposing passwords via environment variables there's a thin NodeJS wrapper that fetches the password from secrets manager and passes it to Rambler.
 
 ## CDK
 
