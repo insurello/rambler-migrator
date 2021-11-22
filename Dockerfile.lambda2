@@ -1,0 +1,21 @@
+FROM public.ecr.aws/lambda/nodejs:14
+# Alternatively, you can pull the base image from Docker Hub: amazon/aws-lambda-nodejs:12
+
+WORKDIR ${LAMBDA_TASK_ROOT}
+COPY package.json tsconfig.json ./
+RUN npm install
+
+RUN curl -o rambler -L https://github.com/elwinar/rambler/releases/download/v5.4.0/rambler-linux-amd64
+RUN ls
+RUN chmod +x rambler
+
+COPY migrations migrations
+COPY rambler.json .
+# copy app in a different layer to allow caching the above
+COPY src/lambda-migrator/app.ts .
+
+RUN npm run build
+RUN ls
+
+# Set the CMD to your handler (could also be done as a parameter override outside of the Dockerfile)
+CMD [ "app.handler" ]
