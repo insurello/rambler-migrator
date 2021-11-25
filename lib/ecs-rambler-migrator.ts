@@ -1,9 +1,11 @@
+import * as ec2 from "@aws-cdk/aws-ec2";
 import { IVpc, Port, SubnetType } from "@aws-cdk/aws-ec2";
 import { DockerImageAsset } from "@aws-cdk/aws-ecr-assets";
 import * as ecs from "@aws-cdk/aws-ecs";
 import { ScheduledFargateTask } from "@aws-cdk/aws-ecs-patterns";
 import * as events from "@aws-cdk/aws-events";
 import * as iam from "@aws-cdk/aws-iam";
+import * as lambda from "@aws-cdk/aws-lambda";
 import { ServerlessCluster } from "@aws-cdk/aws-rds";
 import * as cdk from "@aws-cdk/core";
 import * as cr from "@aws-cdk/custom-resources";
@@ -36,7 +38,7 @@ export class EcsRamblerMigrator extends cdk.Stack {
       "password"
     );
 
-    const task = new ScheduledFargateTask(this, "FlightCollectorTask", {
+    const task = new ScheduledFargateTask(this, "RamblerMigratorTask", {
       cluster: ecsCluster,
       scheduledFargateTaskImageOptions: {
         image: ecs.ContainerImage.fromDockerImageAsset(asset),
@@ -52,9 +54,9 @@ export class EcsRamblerMigrator extends cdk.Stack {
           RAMBLER_USER: dbUser,
         },
       },
-      schedule: events.Schedule.cron({ year: "1970" }), // Run cron at every minute 1. Effectively running once per hour. More info https://crontab.guru/#0_*_*_*_*
+      schedule: events.Schedule.cron({ year: "1947", month: "10", day: "14" }),
       platformVersion: ecs.FargatePlatformVersion.LATEST,
-      subnetSelection: { subnetType: SubnetType.PUBLIC },
+      subnetSelection: { subnetType: SubnetType.PRIVATE_WITH_NAT },
     });
 
     task.task.securityGroups?.forEach((sg) => {
@@ -64,13 +66,40 @@ export class EcsRamblerMigrator extends cdk.Stack {
       );
     });
 
+    const fn = new lambda.Function(this, "func", {
+      functionName: "ecs-rambler-migrator",
+      code: lambda.Code.fromAsset(path.join(__dirname, "../src/ecs-migrator")),
+      runtime: lambda.Runtime.NODEJS_14_X,
+      handler: "app.handler",
+      vpc,
+      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_NAT },
+      memorySize: 256,
+      timeout: cdk.Duration.minutes(5),
+    });
+
+    task.taskDefinition.taskRole.grantPassRole(fn.role!);
+    fn.role?.attachInlinePolicy(
+      new iam.Policy(this, "runTaskPolicy", {
+        statements: [
+          new iam.PolicyStatement({
+            effect: iam.Effect.ALLOW,
+            actions: ["ecs:RunTask"],
+            resources: [task.taskDefinition.taskDefinitionArn],
+          }),
+        ],
+      })
+    );
+
     const triggerParams = {
-      service: "ecs",
-      action: "RunTask",
+      service: "Lambda",
+      action: "invoke",
       parameters: {
-        taskDefinition: task.taskDefinition.taskDefinitionArn,
-        cluster: ecsCluster.clusterName,
-        count: 1,
+        FunctionName: fn.functionName,
+        InvocationType: "Event",
+        Payload: JSON.stringify({
+          taskDefinitionArn: task.taskDefinition.taskDefinitionArn,
+          clusterArn: ecsCluster.clusterArn,
+        }),
       },
       physicalResourceId: cr.PhysicalResourceId.of(Date.now().toString()),
     };
@@ -78,9 +107,9 @@ export class EcsRamblerMigrator extends cdk.Stack {
     const ecsTrigger = new cr.AwsCustomResource(this, "EcsTrigger", {
       policy: cr.AwsCustomResourcePolicy.fromStatements([
         new iam.PolicyStatement({
-          actions: ["ecs:RunTask"],
+          actions: ["lambda:InvokeFunction"],
           effect: iam.Effect.ALLOW,
-          resources: [task.taskDefinition.taskDefinitionArn],
+          resources: [fn.functionArn],
         }),
       ]),
       timeout: cdk.Duration.minutes(15),
