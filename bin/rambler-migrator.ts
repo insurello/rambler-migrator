@@ -12,8 +12,10 @@ const vpcStack = new VpcStack(app, "VpcStack", {});
 
 const rds = new RdsStack(app, "RDS", vpcStack.vpc, {});
 
+const ecsStack = new cdk.Stack(app, "EcsRamblerMigratorStack");
+
 new EcsRamblerMigrator(
-  app,
+  ecsStack,
   "EcsRamblerMigrator",
   vpcStack.vpc,
   rds.cluster,

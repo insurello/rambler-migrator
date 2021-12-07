@@ -1,25 +1,20 @@
-import * as ec2 from "@aws-cdk/aws-ec2";
-import { IVpc, Port, SubnetType } from "@aws-cdk/aws-ec2";
+import { IVpc, Port } from "@aws-cdk/aws-ec2";
 import { DockerImageAsset } from "@aws-cdk/aws-ecr-assets";
 import * as ecs from "@aws-cdk/aws-ecs";
-import { ScheduledFargateTask } from "@aws-cdk/aws-ecs-patterns";
-import * as events from "@aws-cdk/aws-events";
-import * as iam from "@aws-cdk/aws-iam";
-import * as lambda from "@aws-cdk/aws-lambda";
+import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
 import { ServerlessCluster } from "@aws-cdk/aws-rds";
 import * as cdk from "@aws-cdk/core";
-import * as cr from "@aws-cdk/custom-resources";
+import { RunTask } from "cdk-fargate-run-task";
 import * as path from "path";
 
-export class EcsRamblerMigrator extends cdk.Stack {
+export class EcsRamblerMigrator extends cdk.Construct {
   constructor(
     scope: cdk.Construct,
     id: string,
     vpc: IVpc,
-    dbCluster: ServerlessCluster,
-    props: cdk.StackProps
+    dbCluster: ServerlessCluster
   ) {
-    super(scope, id, props);
+    super(scope, id);
 
     const ecsCluster = new ecs.Cluster(this, "RamblerMigratorCluster", {
       vpc,
@@ -38,83 +33,40 @@ export class EcsRamblerMigrator extends cdk.Stack {
       "password"
     );
 
-    const task = new ScheduledFargateTask(this, "RamblerMigratorTask", {
-      cluster: ecsCluster,
-      scheduledFargateTaskImageOptions: {
-        image: ecs.ContainerImage.fromDockerImageAsset(asset),
-        memoryLimitMiB: 512,
-        environment: {
-          DB_HOST: dbHost,
-          RAMBLER_HOST: dbHost,
-        },
-        secrets: {
-          DB_PASSWORD: dbPassword,
-          DB_USERNAME: dbUser,
-          RAMBLER_PASSWORD: dbPassword,
-          RAMBLER_USER: dbUser,
-        },
+    const task = new ecs.FargateTaskDefinition(this, "RamblerMigratorTask", {
+      memoryLimitMiB: 512,
+      cpu: 256,
+    });
+
+    task.addContainer("RamblerDocker", {
+      image: ecs.ContainerImage.fromDockerImageAsset(asset),
+      environment: {
+        DB_HOST: dbHost,
+        RAMBLER_HOST: dbHost,
       },
-      schedule: events.Schedule.cron({ year: "1947", month: "10", day: "14" }),
-      platformVersion: ecs.FargatePlatformVersion.LATEST,
-      subnetSelection: { subnetType: SubnetType.PRIVATE_WITH_NAT },
+      secrets: {
+        DB_PASSWORD: dbPassword,
+        DB_USERNAME: dbUser,
+        RAMBLER_PASSWORD: dbPassword,
+        RAMBLER_USER: dbUser,
+      },
+      logging: new ecs.AwsLogDriver({
+        streamPrefix: "RamblerMigrator",
+        logGroup: new LogGroup(this, "RamblerMigrator", {
+          logGroupName: `${id}-RamblerMigrator`,
+          retention: RetentionDays.ONE_DAY,
+        }),
+      }),
     });
 
-    task.task.securityGroups?.forEach((sg) => {
-      sg.connections.allowTo(
-        dbCluster.connections,
-        Port.tcp(dbCluster.clusterEndpoint.port)
-      );
-    });
-
-    const fn = new lambda.Function(this, "func", {
-      functionName: "ecs-rambler-migrator",
-      code: lambda.Code.fromAsset(path.join(__dirname, "../src/ecs-migrator")),
-      runtime: lambda.Runtime.NODEJS_14_X,
-      handler: "app.handler",
-      vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_WITH_NAT },
-      memorySize: 256,
-      timeout: cdk.Duration.minutes(5),
-    });
-
-    task.taskDefinition.taskRole.grantPassRole(fn.role!);
-    fn.role?.attachInlinePolicy(
-      new iam.Policy(this, "runTaskPolicy", {
-        statements: [
-          new iam.PolicyStatement({
-            effect: iam.Effect.ALLOW,
-            actions: ["ecs:RunTask"],
-            resources: [task.taskDefinition.taskDefinitionArn],
-          }),
-        ],
-      })
+    ecsCluster.connections.allowTo(
+      dbCluster.connections,
+      Port.tcp(dbCluster.clusterEndpoint.port)
     );
 
-    const triggerParams = {
-      service: "Lambda",
-      action: "invoke",
-      parameters: {
-        FunctionName: fn.functionName,
-        InvocationType: "Event",
-        Payload: JSON.stringify({
-          taskDefinitionArn: task.taskDefinition.taskDefinitionArn,
-          clusterArn: ecsCluster.clusterArn,
-        }),
-      },
-      physicalResourceId: cr.PhysicalResourceId.of(Date.now().toString()),
-    };
-
-    const ecsTrigger = new cr.AwsCustomResource(this, "EcsTrigger", {
-      policy: cr.AwsCustomResourcePolicy.fromStatements([
-        new iam.PolicyStatement({
-          actions: ["lambda:InvokeFunction"],
-          effect: iam.Effect.ALLOW,
-          resources: [fn.functionArn],
-        }),
-      ]),
-      timeout: cdk.Duration.minutes(15),
-      onCreate: triggerParams,
-      onUpdate: triggerParams,
+    const runTaskAtOnce = new RunTask(this, "RunDemoTaskOnce", {
+      task,
+      cluster: ecsCluster,
     });
   }
 }
