@@ -7,12 +7,12 @@ import * as cdk from "@aws-cdk/core";
 import { RunTask } from "cdk-fargate-run-task";
 import * as path from "path";
 
-export class EcsRamblerMigrator extends cdk.Construct {
+export class EcsRamblerMigrator extends cdk.Stack {
   constructor(
     scope: cdk.Construct,
     id: string,
     vpc: IVpc,
-    dbCluster: ServerlessCluster
+    rdsCluster: ServerlessCluster
   ) {
     super(scope, id);
 
@@ -26,10 +26,13 @@ export class EcsRamblerMigrator extends cdk.Construct {
       file: "Dockerfile.ecs",
     });
 
-    const dbHost = dbCluster.clusterEndpoint.hostname;
-    const dbUser = ecs.Secret.fromSecretsManager(dbCluster.secret!, "username");
+    const dbHost = rdsCluster.clusterEndpoint.hostname;
+    const dbUser = ecs.Secret.fromSecretsManager(
+      rdsCluster.secret!,
+      "username"
+    );
     const dbPassword = ecs.Secret.fromSecretsManager(
-      dbCluster.secret!,
+      rdsCluster.secret!,
       "password"
     );
 
@@ -59,14 +62,18 @@ export class EcsRamblerMigrator extends cdk.Construct {
       }),
     });
 
-    ecsCluster.connections.allowTo(
-      dbCluster.connections,
-      Port.tcp(dbCluster.clusterEndpoint.port)
+    const runTask = new RunTask(
+      this,
+      `RunTaskOnce-${new Date().toISOString()}`,
+      {
+        task,
+        cluster: ecsCluster,
+      }
     );
 
-    const runTaskAtOnce = new RunTask(this, "RunDemoTaskOnce", {
-      task,
-      cluster: ecsCluster,
-    });
+    runTask.connections.allowTo(
+      rdsCluster,
+      Port.tcp(rdsCluster.clusterEndpoint.port)
+    );
   }
 }
