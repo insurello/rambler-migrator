@@ -6,13 +6,18 @@ This project sets up:
 
 - a VPC
 - an RDS Aurora Serverless cluster
-- a lambda function in the VPC with access to the cluster
+- alternative 1: a Lambda function in the VPC with access to the cluster
+- alternative 2: an ECS/Fargate task definition in the VPC with access to the cluster
 
 ## Lambda Migrator
 
 The lambda migrator is an AWS NodeJS docker with rambler added. The lambda is triggered using a "Custom Resource" on deploy.
 
 To avoid exposing passwords via environment variables there's a thin NodeJS wrapper that fetches the password from secrets manager and passes it to Rambler.
+
+## ECS Migrator
+
+The ECS migrator is a Fargate task built from a vanilla alpine docker with rambler added. It is triggered on deploy using the [cdk-fargate-run-task](https://constructs.dev/packages/cdk-fargate-run-task/v/0.1.165?lang=typescript) package (which most likely uses a custom resource, i.e. lambda, under the hood) which runs a one time task.
 
 ## CDK
 
