@@ -1,12 +1,6 @@
 import { IVpc, Port } from "aws-cdk-lib/aws-ec2";
 import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
-import {
-  AwsLogDriver,
-  Cluster,
-  ContainerImage,
-  FargateTaskDefinition,
-  Secret,
-} from "aws-cdk-lib/aws-ecs";
+import * as ecs from "aws-cdk-lib/aws-ecs";
 import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
 import { ServerlessCluster } from "aws-cdk-lib/aws-rds";
 import { RunTask } from "cdk-fargate-run-task";
@@ -22,30 +16,33 @@ export class EcsRamblerMigrator extends Construct {
   ) {
     super(scope, id);
 
-    const ecsCluster = new Cluster(this, "RamblerMigratorCluster", {
+    const ecsCluster = new ecs.Cluster(scope, "RamblerMigratorCluster", {
       vpc,
       clusterName: "rambler-migrator",
     });
 
-    const asset = new DockerImageAsset(this, "EcsDockerImage", {
+    const asset = new DockerImageAsset(scope, "EcsDockerImage", {
       directory: path.join(__dirname, "../"),
       file: "Dockerfile.ecs",
     });
 
     const dbHost = rdsCluster.clusterEndpoint.hostname;
-    const dbUser = Secret.fromSecretsManager(rdsCluster.secret!, "username");
-    const dbPassword = Secret.fromSecretsManager(
+    const dbUser = ecs.Secret.fromSecretsManager(
+      rdsCluster.secret!,
+      "username"
+    );
+    const dbPassword = ecs.Secret.fromSecretsManager(
       rdsCluster.secret!,
       "password"
     );
 
-    const task = new FargateTaskDefinition(this, "RamblerMigratorTask", {
+    const task = new ecs.FargateTaskDefinition(scope, "RamblerMigratorTask", {
       memoryLimitMiB: 512,
       cpu: 256,
     });
 
     task.addContainer("RamblerDocker", {
-      image: ContainerImage.fromDockerImageAsset(asset),
+      image: ecs.ContainerImage.fromDockerImageAsset(asset),
       environment: {
         DB_HOST: dbHost,
         RAMBLER_HOST: dbHost,
@@ -56,9 +53,9 @@ export class EcsRamblerMigrator extends Construct {
         RAMBLER_PASSWORD: dbPassword,
         RAMBLER_USER: dbUser,
       },
-      logging: new AwsLogDriver({
+      logging: new ecs.AwsLogDriver({
         streamPrefix: "RamblerMigrator",
-        logGroup: new LogGroup(this, "RamblerMigrator", {
+        logGroup: new LogGroup(scope, "RamblerMigrator", {
           logGroupName: `${id}-RamblerMigrator`,
           retention: RetentionDays.ONE_DAY,
         }),
@@ -66,7 +63,7 @@ export class EcsRamblerMigrator extends Construct {
     });
 
     const runTask = new RunTask(
-      this,
+      scope,
       `RunTaskOnce-${new Date().toISOString()}`,
       {
         task,

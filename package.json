@@ -1,6 +1,6 @@
 {
   "name": "lambda-rambler-migrator",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "bin": {
     "lambda-rambler-migrator": "bin/lambda-rambler-migrator.js"
   },

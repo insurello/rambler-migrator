@@ -1,22 +1,23 @@
-import * as ec2 from "@aws-cdk/aws-ec2";
-import * as iam from "@aws-cdk/aws-iam";
-import * as lambda from "@aws-cdk/aws-lambda";
-import * as rds from "@aws-cdk/aws-rds";
-import * as cdk from "@aws-cdk/core";
-import * as cr from "@aws-cdk/custom-resources";
+import * as cdk from "aws-cdk-lib";
+import * as ec2 from "aws-cdk-lib/aws-ec2";
+import * as iam from "aws-cdk-lib/aws-iam";
+import * as lambda from "aws-cdk-lib/aws-lambda";
+import * as rds from "aws-cdk-lib/aws-rds";
+import * as cr from "aws-cdk-lib/custom-resources";
+import { Construct } from "constructs";
 import * as path from "path";
 
-export class LambdaRamblerMigrator extends cdk.Stack {
+export class LambdaRamblerMigrator extends Construct {
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     vpc: ec2.Vpc,
     rdsCluster: rds.ServerlessCluster,
     props?: cdk.StackProps
   ) {
-    super(scope, id, props);
+    super(scope, id);
 
-    const fn = new lambda.DockerImageFunction(this, "func", {
+    const fn = new lambda.DockerImageFunction(scope, "func", {
       functionName: "rambler-migrator",
       code: lambda.DockerImageCode.fromImageAsset(path.join(__dirname, "../"), {
         file: "Dockerfile.lambda",
@@ -42,7 +43,7 @@ export class LambdaRamblerMigrator extends cdk.Stack {
     rdsCluster.secret!.grantRead(fn.role!);
 
     // ref: https://github.com/aws/aws-cdk/issues/10820
-    const lambdaTrigger = new cr.AwsCustomResource(this, "FunctionTrigger", {
+    const lambdaTrigger = new cr.AwsCustomResource(scope, "FunctionTrigger", {
       policy: cr.AwsCustomResourcePolicy.fromStatements([
         new iam.PolicyStatement({
           actions: ["lambda:InvokeFunction"],
