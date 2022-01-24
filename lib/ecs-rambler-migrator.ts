@@ -1,22 +1,28 @@
-import { IVpc, Port } from "@aws-cdk/aws-ec2";
-import { DockerImageAsset } from "@aws-cdk/aws-ecr-assets";
-import * as ecs from "@aws-cdk/aws-ecs";
-import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
-import { ServerlessCluster } from "@aws-cdk/aws-rds";
-import * as cdk from "@aws-cdk/core";
+import { IVpc, Port } from "aws-cdk-lib/aws-ec2";
+import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
+import {
+  AwsLogDriver,
+  Cluster,
+  ContainerImage,
+  FargateTaskDefinition,
+  Secret,
+} from "aws-cdk-lib/aws-ecs";
+import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
+import { ServerlessCluster } from "aws-cdk-lib/aws-rds";
 import { RunTask } from "cdk-fargate-run-task";
+import { Construct } from "constructs";
 import * as path from "path";
 
-export class EcsRamblerMigrator extends cdk.Stack {
+export class EcsRamblerMigrator extends Construct {
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     vpc: IVpc,
     rdsCluster: ServerlessCluster
   ) {
     super(scope, id);
 
-    const ecsCluster = new ecs.Cluster(this, "RamblerMigratorCluster", {
+    const ecsCluster = new Cluster(this, "RamblerMigratorCluster", {
       vpc,
       clusterName: "rambler-migrator",
     });
@@ -27,22 +33,19 @@ export class EcsRamblerMigrator extends cdk.Stack {
     });
 
     const dbHost = rdsCluster.clusterEndpoint.hostname;
-    const dbUser = ecs.Secret.fromSecretsManager(
-      rdsCluster.secret!,
-      "username"
-    );
-    const dbPassword = ecs.Secret.fromSecretsManager(
+    const dbUser = Secret.fromSecretsManager(rdsCluster.secret!, "username");
+    const dbPassword = Secret.fromSecretsManager(
       rdsCluster.secret!,
       "password"
     );
 
-    const task = new ecs.FargateTaskDefinition(this, "RamblerMigratorTask", {
+    const task = new FargateTaskDefinition(this, "RamblerMigratorTask", {
       memoryLimitMiB: 512,
       cpu: 256,
     });
 
     task.addContainer("RamblerDocker", {
-      image: ecs.ContainerImage.fromDockerImageAsset(asset),
+      image: ContainerImage.fromDockerImageAsset(asset),
       environment: {
         DB_HOST: dbHost,
         RAMBLER_HOST: dbHost,
@@ -53,7 +56,7 @@ export class EcsRamblerMigrator extends cdk.Stack {
         RAMBLER_PASSWORD: dbPassword,
         RAMBLER_USER: dbUser,
       },
-      logging: new ecs.AwsLogDriver({
+      logging: new AwsLogDriver({
         streamPrefix: "RamblerMigrator",
         logGroup: new LogGroup(this, "RamblerMigrator", {
           logGroupName: `${id}-RamblerMigrator`,
