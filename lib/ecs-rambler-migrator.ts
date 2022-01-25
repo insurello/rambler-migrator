@@ -62,14 +62,11 @@ export class EcsRamblerMigrator extends Construct {
       }),
     });
 
-    const runTask = new RunTask(
-      scope,
-      `RunTaskOnce-${new Date().toISOString()}`,
-      {
-        task,
-        cluster: ecsCluster,
-      }
-    );
+    const runTask = new RunTask(scope, "RunTaskAtOnce", {
+      task,
+      cluster: ecsCluster,
+      runOnResourceUpdate: true,
+    });
 
     runTask.connections.allowTo(
       rdsCluster,
