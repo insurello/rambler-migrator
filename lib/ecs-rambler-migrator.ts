@@ -1,27 +1,27 @@
-import { IVpc, Port } from "@aws-cdk/aws-ec2";
-import { DockerImageAsset } from "@aws-cdk/aws-ecr-assets";
-import * as ecs from "@aws-cdk/aws-ecs";
-import { LogGroup, RetentionDays } from "@aws-cdk/aws-logs";
-import { ServerlessCluster } from "@aws-cdk/aws-rds";
-import * as cdk from "@aws-cdk/core";
+import { IVpc, Port } from "aws-cdk-lib/aws-ec2";
+import { DockerImageAsset } from "aws-cdk-lib/aws-ecr-assets";
+import * as ecs from "aws-cdk-lib/aws-ecs";
+import { LogGroup, RetentionDays } from "aws-cdk-lib/aws-logs";
+import { ServerlessCluster } from "aws-cdk-lib/aws-rds";
 import { RunTask } from "cdk-fargate-run-task";
+import { Construct } from "constructs";
 import * as path from "path";
 
-export class EcsRamblerMigrator extends cdk.Stack {
+export class EcsRamblerMigrator extends Construct {
   constructor(
-    scope: cdk.Construct,
+    scope: Construct,
     id: string,
     vpc: IVpc,
     rdsCluster: ServerlessCluster
   ) {
     super(scope, id);
 
-    const ecsCluster = new ecs.Cluster(this, "RamblerMigratorCluster", {
+    const ecsCluster = new ecs.Cluster(scope, "RamblerMigratorCluster", {
       vpc,
       clusterName: "rambler-migrator",
     });
 
-    const asset = new DockerImageAsset(this, "EcsDockerImage", {
+    const asset = new DockerImageAsset(scope, "EcsDockerImage", {
       directory: path.join(__dirname, "../"),
       file: "Dockerfile.ecs",
     });
@@ -36,7 +36,7 @@ export class EcsRamblerMigrator extends cdk.Stack {
       "password"
     );
 
-    const task = new ecs.FargateTaskDefinition(this, "RamblerMigratorTask", {
+    const task = new ecs.FargateTaskDefinition(scope, "RamblerMigratorTask", {
       memoryLimitMiB: 512,
       cpu: 256,
     });
@@ -55,21 +55,18 @@ export class EcsRamblerMigrator extends cdk.Stack {
       },
       logging: new ecs.AwsLogDriver({
         streamPrefix: "RamblerMigrator",
-        logGroup: new LogGroup(this, "RamblerMigrator", {
+        logGroup: new LogGroup(scope, "RamblerMigrator", {
           logGroupName: `${id}-RamblerMigrator`,
           retention: RetentionDays.ONE_DAY,
         }),
       }),
     });
 
-    const runTask = new RunTask(
-      this,
-      `RunTaskOnce-${new Date().toISOString()}`,
-      {
-        task,
-        cluster: ecsCluster,
-      }
-    );
+    const runTask = new RunTask(scope, "RunTaskAtOnce", {
+      task,
+      cluster: ecsCluster,
+      runOnResourceUpdate: true,
+    });
 
     runTask.connections.allowTo(
       rdsCluster,
